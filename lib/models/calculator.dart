@@ -26,9 +26,11 @@ class Calculator extends StateNotifier<Calculation> {
 
     switch (code) {
       case 'clear':
+      case 'C':
         state = Calculation();
         break;
       case 'enter':
+      case '=':
         Parser p = Parser();
         Expression exp = p.parse(state.stack.join());
         double value = exp.evaluate(EvaluationType.REAL, ContextModel());

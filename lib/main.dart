@@ -1,4 +1,8 @@
 // ignore_for_file: prefer_const_constructors
+import 'package:flutter/foundation.dart' show kIsWeb;
+
+import 'package:shelf/shelf.dart';
+import 'package:shelf/shelf_io.dart' as shelf_io;
 
 import 'package:calculator/models/calculator.dart';
 
@@ -9,7 +13,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'components/display.dart';
 import 'components/numpad.dart';
 
-void main() {
+void main() async {
   runApp(ProviderScope(
     child: const MyApp(),
   ));
@@ -40,6 +44,39 @@ class MyHomePage extends HookConsumerWidget {
     final calulatorResult = ref.watch(calculatorProvider);
 
     final showCalculator = useState(true);
+
+    useEffect(() {
+      debugPrint('::: starting http server');
+      Future.microtask(() async {
+        if (!kIsWeb) {
+          final handler = const Pipeline()
+              .addMiddleware(logRequests())
+              .addHandler((Request request) {
+            final q = request.url.queryParameters['q'] ?? '';
+
+            q.split('').forEach((c) {
+              debugPrint('onTap $c');
+              onTapKeyButton(c);
+            });
+            final newCalculation = ref.watch(calculatorProvider);
+            return Response.ok(
+                'Request for "${request.url.queryParameters}, result: ${newCalculation.result}');
+          });
+
+          final server = await shelf_io.serve(handler, 'localhost', 8080);
+
+          // Enable content compression
+          server.autoCompress = true;
+
+          debugPrint(
+              '::: Serving at http://${server.address.host}:${server.port}');
+        } else {
+          debugPrint('::: http server not supported on web');
+        }
+      });
+
+      return null;
+    }, []);
 
     return Scaffold(
       appBar: AppBar(
